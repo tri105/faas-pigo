@@ -1,0 +1,10 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  faas-pigo:
+    lang: golang-middleware
+    handler: ./faas-pigo
+    image: itbiboo/faas-pigo:latest
+
