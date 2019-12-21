@@ -1,7 +1,6 @@
 package function
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -32,85 +31,101 @@ type FaceDetector struct {
 
 // DetectionResult contains the coordinates of the detected faces and the base64 converted image.
 type DetectionResult struct {
-	Faces       []image.Rectangle
-	ImageBase64 string
-	ImageName   string
+	ImageName string
+	Faces     []image.Rectangle
+	//ImageBase64 string
+	Time string
 }
 
-func verifyRequest(r *http.Request) error {
-	if _, ok := r.MultipartForm.File["image"]; !ok {
-		return fmt.Errorf("No image uploaded. Please try again")
-	}
-	return nil
-}
-
-//Handle function
+// Handle is main function to received request (http.Request) and processing to return the response (via http.ResponseWriter)
 func Handle(w http.ResponseWriter, r *http.Request) {
+	// Start time
+	//start2 := time.Now()
 	parseErr := r.ParseMultipartForm(32 << 20)
+	// Check multipart data
 	if parseErr != nil {
-		http.Error(w, "failed to parse multipart message", http.StatusBadRequest)
+		http.Error(w, "Failed to parse multipart message", http.StatusBadRequest)
 		return
 	}
-
 	if r.MultipartForm == nil || r.MultipartForm.File == nil {
-		http.Error(w, "expecting multipart form file", http.StatusBadRequest)
+		http.Error(w, "Expecting multipart form file", http.StatusBadRequest)
 		return
 	}
 	if err := verifyRequest(r); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	//elapsed2 := time.Since(start2)
+	// Declare variable
 	var (
 		resp  DetectionResult
 		rects []image.Rectangle
-		image []byte
+		//image   []byte
+		outcome []DetectionResult
 	)
-	var outcome []DetectionResult
+	fd := NewFaceDetector("./data/facefinder", 20, 2000, 0.1, 1.1, 0.18)
+	// For loop to process all image in "image" field
 	for _, h := range r.MultipartForm.File["image"] {
+		// Start time
+		start := time.Now()
 		file, err := h.Open()
 		if err != nil {
-			http.Error(w, "failed to get media form file", http.StatusBadRequest)
+			http.Error(w, "Failed to get media form file", http.StatusBadRequest)
 			return
 		}
 		defer file.Close()
+
+		// Create temporary file in /tmp with prefix image
 		tmpfile, err := ioutil.TempFile("/tmp", "image")
 		if err != nil {
 			http.Error(w, "Unable to create temp file", http.StatusInternalServerError)
 			return
 		}
 		if _, err = io.Copy(tmpfile, file); err != nil {
-			http.Error(w, "Unable to copy the source URI to the destionation file", http.StatusInternalServerError)
+			http.Error(w, "Unable to copy file to tmp folder", http.StatusInternalServerError)
 			return
 		}
-		defer os.Remove(tmpfile.Name())
-
-		fd := NewFaceDetector("./data/facefinder", 20, 2000, 0.1, 1.1, 0.18)
+		defer os.Remove(tmpfile.Name()) // Remove tmpfile after processing
+		// Face detection
 		faces, err := fd.DetectFaces(tmpfile.Name())
-
 		if err != nil {
 			http.Error(w, "Error on face detection", http.StatusInternalServerError)
 			return
 		}
+		// Return result (rect location and image encode)
 		var errs error
-		rects, image, errs = fd.DrawFaces(faces, false)
+		rects, _, errs = fd.DrawFaces(faces, false)
 		if errs != nil {
 			http.Error(w, "Error creating image output", http.StatusInternalServerError)
 			return
 		}
+		elapsed := time.Since(start)
 		resp = DetectionResult{
-			Faces:       rects,
-			ImageBase64: base64.StdEncoding.EncodeToString(image),
-			ImageName:   h.Filename,
+			ImageName: h.Filename,
+			Faces:     rects,
+			//ImageBase64: base64.StdEncoding.EncodeToString(image),
+			Time: elapsed.String(),
 		}
+		// Append image result to overall
 		outcome = append(outcome, resp)
 	}
-	j, err := json.Marshal(outcome)
+	joutcome, err := json.Marshal(outcome)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error encoding output: %s", err), http.StatusInternalServerError)
 		return
 	}
+	// Return result
 	w.WriteHeader(http.StatusOK)
-	w.Write(j)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(joutcome)
+}
+
+// verifyRequest will check and verify the multipart/form-data input include image file or not
+func verifyRequest(r *http.Request) error {
+	if _, ok := r.MultipartForm.File["image"]; !ok {
+		return fmt.Errorf("No image uploaded. Please try again")
+	}
+	return nil
 }
 
 // NewFaceDetector initialises the constructor function.
