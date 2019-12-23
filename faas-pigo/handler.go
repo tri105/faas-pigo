@@ -37,6 +37,12 @@ type DetectionResult struct {
 	Time string
 }
 
+// Result contains final json return
+type Result struct {
+	Status string
+	Data   []DetectionResult
+}
+
 // Handle is main function to received request (http.Request) and processing to return the response (via http.ResponseWriter)
 func Handle(w http.ResponseWriter, r *http.Request) {
 	// Start time
@@ -62,6 +68,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		rects []image.Rectangle
 		//image   []byte
 		outcome []DetectionResult
+		result  Result
 	)
 	fd := NewFaceDetector("./data/facefinder", 20, 2000, 0.1, 1.1, 0.18)
 	// For loop to process all image in "image" field
@@ -109,7 +116,11 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		// Append image result to overall
 		outcome = append(outcome, resp)
 	}
-	joutcome, err := json.Marshal(outcome)
+	result = Result{
+		Status: "success",
+		Data:   outcome,
+	}
+	joutcome, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error encoding output: %s", err), http.StatusInternalServerError)
 		return
