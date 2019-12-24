@@ -39,18 +39,20 @@ type DetectionResult struct {
 
 // Result contains final json return
 type Result struct {
-	Status string
-	Data   []DetectionResult
+	Status      string
+	TotalTime   string
+	TotalImages int
+	Data        []DetectionResult
 }
 
 // Handle is main function to received request (http.Request) and processing to return the response (via http.ResponseWriter)
 func Handle(w http.ResponseWriter, r *http.Request) {
 	// Start time
 	//start2 := time.Now()
-	parseErr := r.ParseMultipartForm(32 << 20)
+	parseErr := r.ParseMultipartForm(128 << 20)
 	// Check multipart data
 	if parseErr != nil {
-		http.Error(w, "Failed to parse multipart message", http.StatusBadRequest)
+		http.Error(w, parseErr.Error(), http.StatusBadRequest)
 		return
 	}
 	if r.MultipartForm == nil || r.MultipartForm.File == nil {
@@ -67,11 +69,15 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		resp  DetectionResult
 		rects []image.Rectangle
 		//image   []byte
-		outcome []DetectionResult
-		result  Result
+		outcome   []DetectionResult
+		result    Result
+		numImages int
 	)
+	numImages = 0
 	fd := NewFaceDetector("./data/facefinder", 20, 2000, 0.1, 1.1, 0.18)
 	// For loop to process all image in "image" field
+	// Start time
+	begin := time.Now()
 	for _, h := range r.MultipartForm.File["image"] {
 		// Start time
 		start := time.Now()
@@ -113,12 +119,16 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			//ImageBase64: base64.StdEncoding.EncodeToString(image),
 			Time: elapsed.String(),
 		}
+		numImages++
 		// Append image result to overall
 		outcome = append(outcome, resp)
 	}
+	end := time.Since(begin)
 	result = Result{
-		Status: "success",
-		Data:   outcome,
+		Status:      "success",
+		TotalTime:   end.String(),
+		TotalImages: numImages,
+		Data:        outcome,
 	}
 	joutcome, err := json.Marshal(result)
 	if err != nil {

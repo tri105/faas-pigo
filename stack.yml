@@ -7,4 +7,13 @@ functions:
     lang: golang-middleware
     handler: ./faas-pigo
     image: itbiboo/faas-pigo:latest
+    read_timeout: 300s  
+    write_timeout: 300s  
+    upstream_timeout: 300s 
+    exec_timeout: 300s
+    environment:
+      read_timeout: 300s 
+      write_timeout: 300s  
+      upstream_timeout: 300s 
+      exec_timeout: 300s
 
