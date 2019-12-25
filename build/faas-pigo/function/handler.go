@@ -31,8 +31,9 @@ type FaceDetector struct {
 
 // DetectionResult contains the coordinates of the detected faces and the base64 converted image.
 type DetectionResult struct {
-	ImageName string
-	Faces     []image.Rectangle
+	ImageName  string
+	TotalFaces int
+	Faces      []image.Rectangle
 	//ImageBase64 string
 	Time string
 }
@@ -114,8 +115,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		elapsed := time.Since(start)
 		resp = DetectionResult{
-			ImageName: h.Filename,
-			Faces:     rects,
+			ImageName:  h.Filename,
+			TotalFaces: len(rects),
+			Faces:      rects,
 			//ImageBase64: base64.StdEncoding.EncodeToString(image),
 			Time: elapsed.String(),
 		}
