@@ -20,5 +20,9 @@ functions:
       memory: 40Mi
       cpu: 100m
     request:
-      memory: 20Mi
+      memory: 40Mi
       cpu: 100m
+    labels:
+      com.openfaas.scale.factor: 5
+      com.openfaas.scale.min: 3
+
