@@ -16,4 +16,9 @@ functions:
       write_timeout: 300s  
       upstream_timeout: 300s 
       exec_timeout: 300s
-
+    limits:
+      memory: 40Mi
+      cpu: 100m
+    request:
+      memory: 20Mi
+      cpu: 100m
